@@ -14,14 +14,12 @@
         html, body{height:100%;margin:0;padding:0;overflow:hidden;
             font-family:'Trebuchet MS','Segoe UI',sans-serif;
             user-select:none;-webkit-user-select:none;
-            touch-action:none;overscroll-behavior:none;
-            position:fixed;inset:0;width:100%;}
-        body{
-            background:url("beans.jpg");
-            background-size:cover;
-            background-position:center;
+            touch-action:none;overscroll-behavior:none;}
+        #playfield{
+            position:fixed;inset:0;touch-action:none;
+            background:url("beans.jpg") center/cover no-repeat;
+            background-color:#111;
         }
-        #playfield{position:fixed;inset:0;touch-action:none;}
 
         /* Hedefler */
         .kanye{
