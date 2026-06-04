@@ -90,29 +90,30 @@
     <div id="playfield"></div>
 
     <div id="hud" class="hidden">
-        <div class="panel"><small>Skor</small><b id="score">0</b></div>
+        <div class="panel"><small>Score</small><b id="score">0</b></div>
         <div class="panel" id="comboPanel"><small>Combo</small><b id="combo">x1</b></div>
-        <div class="panel"><small>Seviye</small><b id="level">1</b></div>
-        <div class="panel"><small>Rekor</small><b id="best">0</b></div>
+        <div class="panel"><small>Level</small><b id="level">1</b></div>
+        <div class="panel"><small>Best</small><b id="best">0</b></div>
     </div>
     <div id="timeBarWrap" class="hidden"><div id="timeBar"></div></div>
 
-    <!-- Başlangıç ekranı -->
+    <audio id="bgMusic" loop src="YE - FATHER (feat. TRAVIS SCOTT).mp3" preload="auto"></audio>
+
+    <!-- Start screen -->
     <div id="startScreen" class="overlay">
-        <h1>🕶️ Kanye'yi Bul!</h1>
-        <p>Fasulyelerin arasına saklanan <b>Kanye</b>'ye olabildiğince hızlı tıkla.
-           Hızlı oldukça daha çok puan ve <b style="color:var(--good)">combo</b> kazanırsın!</p>
-        <p>⚠️ Dikkat: <b style="color:var(--bad)">yeşil sahte Kanye'lere</b> tıklarsan
-           puan ve süre kaybedersin. Seviye yükseldikçe oyun hızlanır.</p>
-        <button class="btn" onclick="startGame()">OYNA ▶</button>
+        <h1>🕶️ Find Kanye</h1>
+        <p>Click the real <b>Kanye</b> hiding in the beans as fast as you can.
+           Build combos for bigger points!</p>
+        <p>⚠️ Watch out: clicking <b style="color:var(--bad)">green fake Kanyes</b> costs you points and time.</p>
+        <button class="btn" onclick="startGame()">PLAY ▶</button>
     </div>
 
-    <!-- Bitiş ekranı -->
+    <!-- End screen -->
     <div id="endScreen" class="overlay hidden">
-        <h1>Süre Doldu!</h1>
+        <h1>Time's Up!</h1>
         <p id="finalStats"></p>
-        <p id="newRecord" class="hidden" style="color:var(--good);font-weight:bold;">🏆 YENİ REKOR! 🏆</p>
-        <button class="btn" onclick="startGame()">TEKRAR OYNA ↻</button>
+        <p id="newRecord" class="hidden" style="color:var(--good);font-weight:bold;">🏆 NEW RECORD! 🏆</p>
+        <button class="btn" onclick="startGame()">PLAY AGAIN ↻</button>
     </div>
 
     <script>
@@ -127,6 +128,8 @@
         const bestEl  = document.getElementById('best');
         const startScreen = document.getElementById('startScreen');
         const endScreen   = document.getElementById('endScreen');
+        const bgMusic     = document.getElementById('bgMusic');
+        bgMusic.volume    = 0.5;
 
         const START_TIME = 30;      // saniye
         const MAX_TIME   = 30;
@@ -200,7 +203,7 @@
                 state.score = Math.max(0, state.score - 5);
                 state.time  = Math.max(0, state.time - 3);
                 beep(110,.25,'sawtooth');
-                popText(cx,cy,'-5  -3sn',getCSS('--bad'));
+                popText(cx,cy,'-5  -3s',getCSS('--bad'));
                 field.classList.remove('shake'); void field.offsetWidth;
                 field.classList.add('shake');
             }else{
@@ -296,6 +299,8 @@
             timeBar.style.width='100%';
             lastTs = 0;
             beep(523,.12,'square');
+            bgMusic.currentTime = 0;
+            bgMusic.play().catch(()=>{});
             requestAnimationFrame(loop);
         }
 
@@ -303,13 +308,14 @@
             state.running = false;
             hud.classList.add('hidden');
             timeWrap.classList.add('hidden');
+            bgMusic.pause();
             beep(196,.4,'sawtooth');
             const isRecord = state.score > best;
             if(isRecord){ best = state.score; localStorage.setItem('kanyeBest', best); }
             bestEl.textContent = best;
             document.getElementById('finalStats').innerHTML =
-                'Skorun: <b>'+state.score+'</b><br>'+
-                'Ulaştığın seviye: <b>'+state.level+'</b> · Rekor: <b>'+best+'</b>';
+                'Score: <b>'+state.score+'</b><br>'+
+                'Level reached: <b>'+state.level+'</b> · Best: <b>'+best+'</b>';
             document.getElementById('newRecord').classList.toggle('hidden', !isRecord);
             endScreen.classList.remove('hidden');
         }
