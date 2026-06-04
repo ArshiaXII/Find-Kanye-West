@@ -183,7 +183,14 @@
             }, 13000);
         });
         carnivalMusic.addEventListener('pause', clearCarnivalShake);
-        carnivalMusic.addEventListener('ended', clearCarnivalShake);
+        carnivalMusic.addEventListener('ended', ()=>{
+            clearCarnivalShake();
+            // Carnival modunda kaldıkça baştan çal (titreme yeniden 13sn sonra)
+            if(state && state.running && state.carnivalMode){
+                carnivalMusic.currentTime = 0;
+                carnivalMusic.play().catch(()=>{});
+            }
+        });
 
         const START_TIME = 30;
         const MAX_TIME   = 30;
@@ -282,10 +289,10 @@
         // --- Müzik çalma listesi (her oyunda rastgele sıra) ---
         const PARIS_MAX = 180; // Video Project 9: yalnızca ilk 3 dakika
         let parisTimeout = null;
+        // Carnival listede değil; yalnızca skor eşiğinde (150) gelir
         const musicTracks = [
-            { audio: bgMusic,       paris:false },
-            { audio: carnivalMusic, paris:false },
-            { audio: parisMusic,    paris:true  }
+            { audio: bgMusic,    paris:false },
+            { audio: parisMusic, paris:true  }
         ];
         let playlist = [], playlistPos = 0;
 
@@ -301,6 +308,7 @@
             parisLabel.classList.remove('show');
             clearCarnivalShake();
             musicTracks.forEach(t=>{ t.audio.pause(); });
+            carnivalMusic.pause();
         }
         function startMusic(){
             stopAllMusic();
@@ -389,6 +397,10 @@
 
         function switchToCarnival(){
             state.carnivalMode = true;
+            // Müzik: rastgele şarkıyı durdur, Carnival'a geç
+            stopAllMusic();
+            carnivalMusic.currentTime = 0;
+            carnivalMusic.play().catch(()=>{});
             // Zorluk patlaması
             state.speed *= 1.5;
             state.size = Math.max(minSize(), state.size - 6);
