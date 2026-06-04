@@ -83,6 +83,14 @@
             50%{transform:translate(8px,-4px);}
             75%{transform:translate(-5px,-3px);}
         }
+        .carnivalShake{animation:carnivalShakeAnim .18s ease-in-out infinite;}
+        @keyframes carnivalShakeAnim{
+            0%,100%{transform:translate(0,0);}
+            20%{transform:translate(-5px,3px);}
+            40%{transform:translate(5px,-3px);}
+            60%{transform:translate(-3px,-4px);}
+            80%{transform:translate(4px,2px);}
+        }
         #finalStats b{color:var(--accent);}
 
         /* Carnival mode */
@@ -96,16 +104,18 @@
             50% {box-shadow:inset 0 0 70px rgba(255,180,0,.5);}
             100%{box-shadow:inset 0 0 40px rgba(255,60,0,.35);}
         }
-        #modeLabel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
-            z-index:30;font-size:clamp(36px,10vw,72px);font-weight:900;
+        #modeLabel,#parisLabel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+            z-index:30;font-size:clamp(36px,10vw,72px);font-weight:900;text-align:center;
             color:#fff;text-shadow:0 0 30px #ff6a00,0 0 60px #ff6a00;
             pointer-events:none;transition:transform .15s;}
-        #modeLabel.show{transform:translate(-50%,-50%) scale(1);}
+        #parisLabel{text-shadow:0 0 30px #2d9bff,0 0 60px #2d9bff;letter-spacing:2px;}
+        #modeLabel.show,#parisLabel.show{transform:translate(-50%,-50%) scale(1);}
     </style>
 </head>
 <body>
     <div id="playfield"></div>
     <div id="modeLabel">🎪 CARNIVAL MODE</div>
+    <div id="parisLabel">🗼 WHO IS IN PARIS</div>
 
     <div id="hud" class="hidden">
         <div class="panel"><small>Score</small><b id="score">0</b></div>
@@ -115,8 +125,9 @@
     </div>
     <div id="timeBarWrap" class="hidden"><div id="timeBar"></div></div>
 
-    <audio id="bgMusic"      loop src="YE - FATHER (feat. TRAVIS SCOTT).mp3" preload="auto"></audio>
-    <audio id="carnivalMusic" loop src="$, Ye, Ty Dolla $ign - CARNIVAL ft. Playboi Carti &amp; Rich Da Kid.mp3" preload="auto"></audio>
+    <audio id="bgMusic"       src="YE - FATHER (feat. TRAVIS SCOTT).mp3" preload="auto"></audio>
+    <audio id="carnivalMusic" src="$, Ye, Ty Dolla $ign - CARNIVAL ft. Playboi Carti &amp; Rich Da Kid.mp3" preload="auto"></audio>
+    <audio id="parisMusic"    src="Video Project 9.m4a" preload="auto"></audio>
 
     <!-- Start screen -->
     <div id="startScreen" class="overlay">
@@ -149,9 +160,30 @@
         const endScreen   = document.getElementById('endScreen');
         const bgMusic      = document.getElementById('bgMusic');
         const carnivalMusic= document.getElementById('carnivalMusic');
+        const parisMusic   = document.getElementById('parisMusic');
         const modeLabel    = document.getElementById('modeLabel');
+        const parisLabel   = document.getElementById('parisLabel');
         bgMusic.volume     = 0.5;
         carnivalMusic.volume = 0.55;
+        parisMusic.volume  = 0.5;
+
+        // --- Carnival 13sn sonra 25sn titreme ---
+        let cShakeT1 = null, cShakeT2 = null;
+        function clearCarnivalShake(){
+            if(cShakeT1){ clearTimeout(cShakeT1); cShakeT1=null; }
+            if(cShakeT2){ clearTimeout(cShakeT2); cShakeT2=null; }
+            field.classList.remove('carnivalShake');
+        }
+        carnivalMusic.addEventListener('play', ()=>{
+            clearCarnivalShake();
+            cShakeT1 = setTimeout(()=>{
+                cShakeT1 = null;
+                if(state && state.running) field.classList.add('carnivalShake');
+                cShakeT2 = setTimeout(()=>{ cShakeT2=null; field.classList.remove('carnivalShake'); }, 25000);
+            }, 13000);
+        });
+        carnivalMusic.addEventListener('pause', clearCarnivalShake);
+        carnivalMusic.addEventListener('ended', clearCarnivalShake);
 
         const START_TIME = 30;
         const MAX_TIME   = 30;
@@ -247,6 +279,70 @@
             [392,329,261,196].forEach((f,i) => osc(f,'sawtooth',0.14,0.20,i*0.08));
         }
 
+        // --- Müzik çalma listesi (her oyunda rastgele sıra) ---
+        const PARIS_MAX = 180; // Video Project 9: yalnızca ilk 3 dakika
+        let parisTimeout = null;
+        const musicTracks = [
+            { audio: bgMusic,       paris:false },
+            { audio: carnivalMusic, paris:false },
+            { audio: parisMusic,    paris:true  }
+        ];
+        let playlist = [], playlistPos = 0;
+
+        function shuffle(a){
+            for(let i=a.length-1;i>0;i--){
+                const j=Math.floor(Math.random()*(i+1));
+                [a[i],a[j]]=[a[j],a[i]];
+            }
+            return a;
+        }
+        function stopAllMusic(){
+            if(parisTimeout){ clearTimeout(parisTimeout); parisTimeout=null; }
+            parisLabel.classList.remove('show');
+            clearCarnivalShake();
+            musicTracks.forEach(t=>{ t.audio.pause(); });
+        }
+        function startMusic(){
+            stopAllMusic();
+            playlist = shuffle(musicTracks.map((_,i)=>i));
+            playlistPos = 0;
+            playCurrentTrack();
+        }
+        function playCurrentTrack(){
+            const track = musicTracks[playlist[playlistPos]];
+            if(track.paris) startParisIntro(track);
+            else { track.audio.currentTime=0; track.audio.play().catch(()=>{}); }
+        }
+        function advanceTrack(){
+            playlistPos++;
+            if(playlistPos>=playlist.length){ shuffle(playlist); playlistPos=0; }
+            playCurrentTrack();
+        }
+        // Video Project 9 gelince: oyunu 1 sn dondur + "WHO IS IN PARIS" göster, sonra çal
+        function startParisIntro(track){
+            if(state) state.paused = true;
+            parisLabel.classList.add('show');
+            parisTimeout = setTimeout(()=>{
+                parisTimeout = null;
+                parisLabel.classList.remove('show');
+                if(state) state.paused = false;
+                lastTs = 0;
+                track.audio.currentTime = 0;
+                track.audio.play().catch(()=>{});
+            }, 1000);
+        }
+        // Şarkı bitince sıradakine geç
+        musicTracks.forEach(t=>{
+            t.audio.addEventListener('ended', ()=>{ if(state && state.running) advanceTrack(); });
+        });
+        // Video Project 9 yalnızca ilk 3 dakika çalsın
+        parisMusic.addEventListener('timeupdate', ()=>{
+            if(parisMusic.currentTime >= PARIS_MAX){
+                parisMusic.pause();
+                if(state && state.running) advanceTrack();
+            }
+        });
+
         function rand(min,max){return Math.random()*(max-min)+min;}
 
         // --- Cihaza göre zorluk ölçeklemesi ---
@@ -293,10 +389,6 @@
 
         function switchToCarnival(){
             state.carnivalMode = true;
-            // Müzik geçişi — smooth fade
-            bgMusic.pause();
-            carnivalMusic.currentTime = 0;
-            carnivalMusic.play().catch(()=>{});
             // Zorluk patlaması
             state.speed *= 1.5;
             state.size = Math.max(minSize(), state.size - 6);
@@ -391,6 +483,8 @@
         let lastTs = 0;
         function loop(ts){
             if(!state || !state.running) return;
+            // Paris girişi sırasında oyun dondurulur
+            if(state.paused){ lastTs = ts; requestAnimationFrame(loop); return; }
             // dt'yi sınırla: sekme arka plandayken sıçramayı önler
             const dt = lastTs ? Math.min((ts-lastTs)/1000, 0.05) : 0;
             lastTs = ts;
@@ -413,7 +507,7 @@
             state = {
                 score:0, combo:0, level:1, found:0,
                 time:START_TIME, speed:baseSpeed(), size:startSize(),
-                running:true, carnivalMode:false, target:null, decoys:[]
+                running:true, paused:false, carnivalMode:false, target:null, decoys:[]
             };
             field.classList.remove('carnival');
             state.target = makeKanye(false);
@@ -422,9 +516,7 @@
             timeBar.style.width='100%';
             lastTs = 0;
             synthStart();
-            carnivalMusic.pause(); carnivalMusic.currentTime = 0;
-            bgMusic.currentTime = 0;
-            bgMusic.play().catch(()=>{});
+            startMusic();
             requestAnimationFrame(loop);
         }
 
@@ -432,8 +524,7 @@
             state.running = false;
             hud.classList.add('hidden');
             timeWrap.classList.add('hidden');
-            bgMusic.pause();
-            carnivalMusic.pause();
+            stopAllMusic();
             field.classList.remove('carnival');
             synthEnd();
             const isRecord = state.score > best;
