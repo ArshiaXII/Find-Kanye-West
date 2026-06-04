@@ -93,6 +93,33 @@
         }
         #finalStats b{color:var(--accent);}
 
+        /* Instagram badge */
+        #igBadge{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));
+            right:calc(18px + env(safe-area-inset-right));
+            z-index:25;display:flex;align-items:center;gap:8px;
+            background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);
+            color:#fff;font-weight:bold;font-size:clamp(13px,3.5vw,16px);
+            padding:10px 16px;border-radius:50px;
+            box-shadow:0 4px 18px rgba(0,0,0,.45);
+            text-decoration:none;letter-spacing:.3px;
+            transition:transform .12s,box-shadow .12s;cursor:pointer;}
+        #igBadge:active{transform:scale(.94);box-shadow:0 2px 8px rgba(0,0,0,.45);}
+        #igBadge svg{flex-shrink:0;}
+
+        /* Countdown intro overlay */
+        #introScreen{position:fixed;inset:0;z-index:40;display:flex;
+            flex-direction:column;align-items:center;justify-content:center;
+            background:rgba(0,0,0,.88);color:#fff;pointer-events:none;}
+        #introScreen.hidden{display:none;}
+        #introTitle{font-size:clamp(38px,10vw,80px);font-weight:900;
+            color:var(--accent);text-shadow:0 0 40px #ffd33d;
+            letter-spacing:2px;margin-bottom:30px;
+            animation:introPulse 1s ease-in-out infinite alternate;}
+        @keyframes introPulse{from{transform:scale(1);}to{transform:scale(1.06);}}
+        #introCount{font-size:clamp(72px,22vw,180px);font-weight:900;
+            text-shadow:0 0 60px #fff,0 0 120px #ffd33d;
+            line-height:1;min-height:1.1em;text-align:center;}
+
         /* Carnival mode */
         #playfield.carnival::after{
             content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
@@ -146,6 +173,22 @@
         <button class="btn" onclick="startGame()">PLAY AGAIN ↻</button>
     </div>
 
+    <!-- Instagram badge (end screen köşesi) -->
+    <a id="igBadge" class="hidden" href="https://www.instagram.com/arshia_riff/" target="_blank" rel="noopener">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+            <circle cx="12" cy="12" r="4.5"/>
+            <circle cx="17.5" cy="6.5" r="1" fill="#fff" stroke="none"/>
+        </svg>
+        @arshia_riff
+    </a>
+
+    <!-- Intro countdown -->
+    <div id="introScreen" class="hidden">
+        <div id="introTitle">🕶️ FIND KANYE</div>
+        <div id="introCount">3</div>
+    </div>
+
     <script>
     (function(){
         const field   = document.getElementById('playfield');
@@ -158,6 +201,9 @@
         const bestEl  = document.getElementById('best');
         const startScreen = document.getElementById('startScreen');
         const endScreen   = document.getElementById('endScreen');
+        const igBadge     = document.getElementById('igBadge');
+        const introScreen = document.getElementById('introScreen');
+        const introCount  = document.getElementById('introCount');
         const bgMusic      = document.getElementById('bgMusic');
         const carnivalMusic= document.getElementById('carnivalMusic');
         const parisMusic   = document.getElementById('parisMusic');
@@ -276,9 +322,33 @@
             }
         }
 
-        // OYUN BAŞLAMA sesi
+        // OYUN BAŞLAMA sesi — dramatik 5 saniyelik build-up
         function synthStart(){
-            [261,329,392,523].forEach((f,i) => osc(f,'sine',0.12,0.15,i*0.06));
+            // Alçak drone bass
+            osc(65,'sine',0.18,5.0,0);
+            osc(65,'sawtooth',0.06,5.0,0);
+            // Yükselen arpejio dalgaları (0-2. sn)
+            const rise=[130,164,196,261,329,392,523,659,784];
+            rise.forEach((f,i)=>osc(f,'triangle',0.10,0.35,i*0.22));
+            // 2. saniyede güçlü chord
+            [261,329,392,523].forEach((f,i)=>osc(f,'square',0.09,1.2,2.0+i*0.05));
+            // 4. saniyede final blast
+            [523,659,784,1047].forEach((f,i)=>osc(f,'sawtooth',0.08,0.8,4.0+i*0.04));
+            osc(65,'sine',0.22,0.6,4.5);
+        }
+
+        // Countdown sonrası oyunu gerçekten başlat
+        function runCountdown(cb){
+            introScreen.classList.remove('hidden');
+            const steps=['3','2','1','GO!'];
+            let i=0;
+            function tick(){
+                introCount.textContent=steps[i];
+                i++;
+                if(i<steps.length) setTimeout(tick,1000);
+                else setTimeout(()=>{ introScreen.classList.add('hidden'); cb(); },800);
+            }
+            tick();
         }
 
         // OYUN BİTİŞ sesi
@@ -357,7 +427,7 @@
         const isTouch = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
         function fieldDiag(){return Math.hypot(field.clientWidth, field.clientHeight);}
         // Hız ekran köşegenine göre (px/saniye) -> her cihazda dengeli, telefonda daha hızlı
-        function baseSpeed(){return fieldDiag() * (isTouch ? 0.14 : 0.10);}
+        function baseSpeed(){return fieldDiag() * (isTouch ? 0.19 : 0.14);}
         function startSize(){return isTouch ? 54 : 60;}
         function minSize(){return isTouch ? 26 : 34;}
         function startDecoys(){return isTouch ? 2 : 1;}
@@ -514,22 +584,26 @@
             field.innerHTML='';
             startScreen.classList.add('hidden');
             endScreen.classList.add('hidden');
+            igBadge.classList.add('hidden');
             hud.classList.remove('hidden');
             timeWrap.classList.remove('hidden');
-            state = {
-                score:0, combo:0, level:1, found:0,
-                time:START_TIME, speed:baseSpeed(), size:startSize(),
-                running:true, paused:false, carnivalMode:false, target:null, decoys:[]
-            };
             field.classList.remove('carnival');
-            state.target = makeKanye(false);
-            for(let i=0;i<startDecoys();i++) state.decoys.push(makeKanye(true));
-            sync();
-            timeBar.style.width='100%';
-            lastTs = 0;
+            // Synth intro başlar, ardından countdown
             synthStart();
-            startMusic();
-            requestAnimationFrame(loop);
+            runCountdown(()=>{
+                state = {
+                    score:0, combo:0, level:1, found:0,
+                    time:START_TIME, speed:baseSpeed(), size:startSize(),
+                    running:true, paused:false, carnivalMode:false, target:null, decoys:[]
+                };
+                state.target = makeKanye(false);
+                for(let i=0;i<startDecoys();i++) state.decoys.push(makeKanye(true));
+                sync();
+                timeBar.style.width='100%';
+                lastTs = 0;
+                startMusic();
+                requestAnimationFrame(loop);
+            });
         }
 
         function endGame(){
@@ -538,6 +612,7 @@
             timeWrap.classList.add('hidden');
             stopAllMusic();
             field.classList.remove('carnival');
+            igBadge.classList.remove('hidden');
             synthEnd();
             const isRecord = state.score > best;
             if(isRecord){ best = state.score; localStorage.setItem('kanyeBest', best); }
