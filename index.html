@@ -84,10 +84,28 @@
             75%{transform:translate(-5px,-3px);}
         }
         #finalStats b{color:var(--accent);}
+
+        /* Carnival mode */
+        #playfield.carnival::after{
+            content:'';position:fixed;inset:0;pointer-events:none;z-index:1;
+            border:5px solid transparent;
+            animation:carnivalBorder 0.6s linear infinite;
+        }
+        @keyframes carnivalBorder{
+            0%  {box-shadow:inset 0 0 40px rgba(255,60,0,.35);}
+            50% {box-shadow:inset 0 0 70px rgba(255,180,0,.5);}
+            100%{box-shadow:inset 0 0 40px rgba(255,60,0,.35);}
+        }
+        #modeLabel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
+            z-index:30;font-size:clamp(36px,10vw,72px);font-weight:900;
+            color:#fff;text-shadow:0 0 30px #ff6a00,0 0 60px #ff6a00;
+            pointer-events:none;transition:transform .15s;}
+        #modeLabel.show{transform:translate(-50%,-50%) scale(1);}
     </style>
 </head>
 <body>
     <div id="playfield"></div>
+    <div id="modeLabel">🎪 CARNIVAL MODE</div>
 
     <div id="hud" class="hidden">
         <div class="panel"><small>Score</small><b id="score">0</b></div>
@@ -97,7 +115,8 @@
     </div>
     <div id="timeBarWrap" class="hidden"><div id="timeBar"></div></div>
 
-    <audio id="bgMusic" loop src="YE - FATHER (feat. TRAVIS SCOTT).mp3" preload="auto"></audio>
+    <audio id="bgMusic"      loop src="YE - FATHER (feat. TRAVIS SCOTT).mp3" preload="auto"></audio>
+    <audio id="carnivalMusic" loop src="$, Ye, Ty Dolla $ign - CARNIVAL ft. Playboi Carti &amp; Rich Da Kid.mp3" preload="auto"></audio>
 
     <!-- Start screen -->
     <div id="startScreen" class="overlay">
@@ -128,27 +147,104 @@
         const bestEl  = document.getElementById('best');
         const startScreen = document.getElementById('startScreen');
         const endScreen   = document.getElementById('endScreen');
-        const bgMusic     = document.getElementById('bgMusic');
-        bgMusic.volume    = 0.5;
+        const bgMusic      = document.getElementById('bgMusic');
+        const carnivalMusic= document.getElementById('carnivalMusic');
+        const modeLabel    = document.getElementById('modeLabel');
+        bgMusic.volume     = 0.5;
+        carnivalMusic.volume = 0.55;
 
-        const START_TIME = 30;      // saniye
+        const START_TIME = 30;
         const MAX_TIME   = 30;
+        const CARNIVAL_SCORE = 150;   // bu skoru geçince Carnival başlar
         let state = null;
         let best = parseInt(localStorage.getItem('kanyeBest') || '0', 10);
         bestEl.textContent = best;
 
-        // --- Basit ses (Web Audio, dosya gerekmez) ---
+        // --- Synth ses motoru ---
         let actx = null;
-        function beep(freq, dur, type){
+        function getCtx(){ return actx = actx || new (window.AudioContext||window.webkitAudioContext)(); }
+
+        // Tek osillatör + gain
+        function osc(freq, type, startVol, dur, delay=0){
             try{
-                actx = actx || new (window.AudioContext||window.webkitAudioContext)();
-                const o = actx.createOscillator(), g = actx.createGain();
-                o.type = type||'square'; o.frequency.value = freq;
-                o.connect(g); g.connect(actx.destination);
-                g.gain.setValueAtTime(.18, actx.currentTime);
-                g.gain.exponentialRampToValueAtTime(.001, actx.currentTime+dur);
-                o.start(); o.stop(actx.currentTime+dur);
+                const ctx = getCtx();
+                const t = ctx.currentTime + delay;
+                const o = ctx.createOscillator(), g = ctx.createGain();
+                o.type = type; o.frequency.value = freq;
+                o.connect(g); g.connect(ctx.destination);
+                g.gain.setValueAtTime(startVol, t);
+                g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+                o.start(t); o.stop(t + dur);
             }catch(e){}
+        }
+
+        // HIT sesi — Father: warm C-maj chord | Carnival: trap synth stab (Fm arpejio)
+        function synthHit(combo){
+            const carnival = state && state.carnivalMode;
+            if(carnival){
+                // Carnival: keskin sawtooth stab, Fm arpejio (F-Ab-C), hızlı
+                [349, 415, 523].forEach((f,i) => osc(f * Math.min(1 + combo*0.04, 2), 'sawtooth', 0.18, 0.10, i*0.025));
+                // Alt sub bass vuruşu
+                osc(55, 'sine', 0.25, 0.15);
+            } else {
+                // Father: yumuşak C-maj chord (C-E-G), sine wave
+                [261, 329, 392].forEach((f,i) => osc(f, 'sine', 0.14, 0.22, i*0.04));
+            }
+        }
+
+        // MISS sesi — Father: alçak growl | Carnival: pitch-drop distorto
+        function synthMiss(){
+            const carnival = state && state.carnivalMode;
+            if(carnival){
+                // Carnival: yüksekten düşen sawtooth + sub thud
+                try{
+                    const ctx = getCtx();
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(400, ctx.currentTime);
+                    o.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.35);
+                    o.connect(g); g.connect(ctx.destination);
+                    g.gain.setValueAtTime(0.22, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                    o.start(); o.stop(ctx.currentTime + 0.35);
+                }catch(e){}
+            } else {
+                // Father: derin alçak growl
+                try{
+                    const ctx = getCtx();
+                    const o = ctx.createOscillator(), g = ctx.createGain();
+                    o.type = 'sawtooth';
+                    o.frequency.setValueAtTime(110, ctx.currentTime);
+                    o.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.28);
+                    o.connect(g); g.connect(ctx.destination);
+                    g.gain.setValueAtTime(0.18, ctx.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
+                    o.start(); o.stop(ctx.currentTime + 0.28);
+                }catch(e){}
+            }
+        }
+
+        // LEVEL UP sesi — Father: yükselen G pentatonik | Carnival: agresif trap horn
+        function synthLevelUp(){
+            const carnival = state && state.carnivalMode;
+            if(carnival){
+                // Carnival: hızlı yükselen square arpejio + son notada vibrato
+                [523,659,784,1047].forEach((f,i) => osc(f,'square',0.13,0.12,i*0.05));
+                osc(1047,'sawtooth',0.10,0.18,0.20);
+            } else {
+                // Father: yumuşak yükselen G-B-D-G arpeji
+                [392,494,587,784].forEach((f,i) => osc(f,'triangle',0.12,0.18,i*0.07));
+            }
+        }
+
+        // OYUN BAŞLAMA sesi
+        function synthStart(){
+            [261,329,392,523].forEach((f,i) => osc(f,'sine',0.12,0.15,i*0.06));
+        }
+
+        // OYUN BİTİŞ sesi
+        function synthEnd(){
+            [392,329,261,196].forEach((f,i) => osc(f,'sawtooth',0.14,0.20,i*0.08));
         }
 
         function rand(min,max){return Math.random()*(max-min)+min;}
@@ -195,6 +291,31 @@
             setTimeout(()=>p.remove(),800);
         }
 
+        function switchToCarnival(){
+            state.carnivalMode = true;
+            // Müzik geçişi — smooth fade
+            bgMusic.pause();
+            carnivalMusic.currentTime = 0;
+            carnivalMusic.play().catch(()=>{});
+            // Zorluk patlaması
+            state.speed *= 1.5;
+            state.size = Math.max(minSize(), state.size - 6);
+            state.target.size = state.size;
+            state.target.el.style.width = state.size+'px';
+            // 3 ekstra sahte
+            for(let i=0;i<3;i++) state.decoys.push(makeKanye(true));
+            // Tüm mevcut sahteler hızlansın
+            const ang = ()=>rand(0,Math.PI*2);
+            [state.target,...state.decoys].forEach(e=>{
+                const a=ang(); e.vx=Math.cos(a)*state.speed; e.vy=Math.sin(a)*state.speed;
+            });
+            // Görsel
+            field.classList.add('carnival');
+            modeLabel.classList.add('show');
+            setTimeout(()=>modeLabel.classList.remove('show'), 2000);
+            synthLevelUp();
+        }
+
         function hit(e){
             if(!state.running) return;
             const cx = e.x + e.size/2, cy = e.y + e.size/2;
@@ -202,7 +323,7 @@
                 state.combo = 0;
                 state.score = Math.max(0, state.score - 5);
                 state.time  = Math.max(0, state.time - 3);
-                beep(110,.25,'sawtooth');
+                synthMiss();
                 popText(cx,cy,'-5  -3s',getCSS('--bad'));
                 field.classList.remove('shake'); void field.offsetWidth;
                 field.classList.add('shake');
@@ -212,11 +333,12 @@
                 state.score += gained;
                 state.time = Math.min(MAX_TIME, state.time + 1.2);
                 state.found++;
-                beep(660 + state.combo*40,.12,'square');
+                synthHit(state.combo);
                 popText(cx,cy,'+'+gained,getCSS('--good'));
-                // hedefi ışınla + hızlandır
                 respawn(e);
                 if(state.found % 5 === 0) levelUp();
+                // Carnival eşiği geçildi mi?
+                if(!state.carnivalMode && state.score >= CARNIVAL_SCORE) switchToCarnival();
             }
             sync();
         }
@@ -246,7 +368,7 @@
             state.target.el.style.width = state.size+'px';
             // yeni sahte ekle
             state.decoys.push(makeKanye(true));
-            beep(880,.18,'triangle');
+            synthLevelUp();
             levelEl.textContent = state.level;
         }
 
@@ -291,14 +413,16 @@
             state = {
                 score:0, combo:0, level:1, found:0,
                 time:START_TIME, speed:baseSpeed(), size:startSize(),
-                running:true, target:null, decoys:[]
+                running:true, carnivalMode:false, target:null, decoys:[]
             };
+            field.classList.remove('carnival');
             state.target = makeKanye(false);
             for(let i=0;i<startDecoys();i++) state.decoys.push(makeKanye(true));
             sync();
             timeBar.style.width='100%';
             lastTs = 0;
-            beep(523,.12,'square');
+            synthStart();
+            carnivalMusic.pause(); carnivalMusic.currentTime = 0;
             bgMusic.currentTime = 0;
             bgMusic.play().catch(()=>{});
             requestAnimationFrame(loop);
@@ -309,7 +433,9 @@
             hud.classList.add('hidden');
             timeWrap.classList.add('hidden');
             bgMusic.pause();
-            beep(196,.4,'sawtooth');
+            carnivalMusic.pause();
+            field.classList.remove('carnival');
+            synthEnd();
             const isRecord = state.score > best;
             if(isRecord){ best = state.score; localStorage.setItem('kanyeBest', best); }
             bestEl.textContent = best;
