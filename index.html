@@ -1,41 +1,338 @@
 <!doctype html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, user-scalable=yes">
-    <title>Document</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>Kanye'yi Bul!</title>
     <style type="text/css">
-        html, body {height: 100%;margin:0;padding:0;}
+        :root{
+            --accent:#ffd33d;
+            --bad:#ff4d4d;
+            --good:#4dff88;
+        }
+        *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+        html, body{height:100%;margin:0;padding:0;overflow:hidden;
+            font-family:'Trebuchet MS','Segoe UI',sans-serif;
+            user-select:none;-webkit-user-select:none;
+            touch-action:none;overscroll-behavior:none;
+            position:fixed;inset:0;width:100%;}
         body{
-            background: url("beans.jpg");
-            background-size: cover;
+            background:url("beans.jpg");
+            background-size:cover;
+            background-position:center;
         }
-        img{
-            width: 35px;
-            position: absolute;
-            cursor: pointer;
+        #playfield{position:fixed;inset:0;touch-action:none;}
+
+        /* Hedefler */
+        .kanye{
+            position:absolute;cursor:pointer;width:60px;
+            transition:filter .1s;
+            filter:drop-shadow(0 4px 6px rgba(0,0,0,.5));
+            will-change:left,top;
         }
+        .kanye.fake{filter:hue-rotate(150deg) saturate(2.5) drop-shadow(0 4px 6px rgba(0,0,0,.5));}
+        .kanye:active{transform:scale(.85);}
+
+        /* HUD */
+        #hud{position:fixed;top:0;left:0;right:0;display:flex;gap:8px;
+            justify-content:space-between;align-items:flex-start;
+            padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
+                    8px calc(10px + env(safe-area-inset-left));
+            pointer-events:none;z-index:10;flex-wrap:nowrap;}
+        .panel{background:rgba(20,20,20,.78);color:#fff;border-radius:12px;
+            padding:6px 10px;font-weight:bold;backdrop-filter:blur(3px);flex:1 1 0;
+            min-width:0;box-shadow:0 4px 14px rgba(0,0,0,.4);text-align:center;line-height:1.15;}
+        .panel small{display:block;font-size:clamp(9px,2.4vw,11px);opacity:.7;font-weight:normal;
+            text-transform:uppercase;letter-spacing:1px;}
+        .panel b{font-size:clamp(16px,5vw,22px);color:var(--accent);}
+        #comboPanel b{color:var(--good);}
+
+        /* Süre çubuğu */
+        #timeBarWrap{position:fixed;left:0;right:0;bottom:0;
+            height:calc(12px + env(safe-area-inset-bottom));
+            padding-bottom:env(safe-area-inset-bottom);
+            background:rgba(0,0,0,.4);z-index:10;}
+        #timeBar{height:100%;width:100%;
+            background:linear-gradient(90deg,var(--good),var(--accent),var(--bad));
+            transition:width .1s linear;}
+
+        /* Skor baloncukları */
+        .pop{position:absolute;z-index:9;font-weight:bold;font-size:24px;
+            pointer-events:none;text-shadow:0 2px 4px #000;
+            animation:floatUp .8s ease-out forwards;}
+        @keyframes floatUp{
+            0%{opacity:1;transform:translateY(0) scale(1);}
+            100%{opacity:0;transform:translateY(-60px) scale(1.4);}
+        }
+
+        /* Ekranlar */
+        .overlay{position:fixed;inset:0;z-index:20;display:flex;
+            flex-direction:column;align-items:center;justify-content:center;
+            background:rgba(0,0,0,.7);color:#fff;text-align:center;padding:20px;}
+        .overlay h1{font-size:clamp(34px,8vw,72px);margin:0 0 6px;
+            color:var(--accent);text-shadow:0 4px 10px #000;}
+        .overlay p{font-size:clamp(15px,3.5vw,20px);max-width:520px;
+            line-height:1.5;margin:6px 0;}
+        .btn{margin-top:22px;padding:16px 42px;font-size:22px;font-weight:bold;
+            border:none;border-radius:50px;cursor:pointer;color:#1a1a1a;
+            background:var(--accent);box-shadow:0 6px 0 #b8941f;transition:.08s;}
+        .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b8941f;}
+        .hidden{display:none;}
+        .shake{animation:shake .3s;}
+        @keyframes shake{
+            0%,100%{transform:translate(0,0);}
+            25%{transform:translate(-8px,4px);}
+            50%{transform:translate(8px,-4px);}
+            75%{transform:translate(-5px,-3px);}
+        }
+        #finalStats b{color:var(--accent);}
     </style>
 </head>
 <body>
-    <img src="head.png" alt="" onclick="found()">
+    <div id="playfield"></div>
+
+    <div id="hud" class="hidden">
+        <div class="panel"><small>Skor</small><b id="score">0</b></div>
+        <div class="panel" id="comboPanel"><small>Combo</small><b id="combo">x1</b></div>
+        <div class="panel"><small>Seviye</small><b id="level">1</b></div>
+        <div class="panel"><small>Rekor</small><b id="best">0</b></div>
+    </div>
+    <div id="timeBarWrap" class="hidden"><div id="timeBar"></div></div>
+
+    <!-- Başlangıç ekranı -->
+    <div id="startScreen" class="overlay">
+        <h1>🕶️ Kanye'yi Bul!</h1>
+        <p>Fasulyelerin arasına saklanan <b>Kanye</b>'ye olabildiğince hızlı tıkla.
+           Hızlı oldukça daha çok puan ve <b style="color:var(--good)">combo</b> kazanırsın!</p>
+        <p>⚠️ Dikkat: <b style="color:var(--bad)">yeşil sahte Kanye'lere</b> tıklarsan
+           puan ve süre kaybedersin. Seviye yükseldikçe oyun hızlanır.</p>
+        <button class="btn" onclick="startGame()">OYNA ▶</button>
+    </div>
+
+    <!-- Bitiş ekranı -->
+    <div id="endScreen" class="overlay hidden">
+        <h1>Süre Doldu!</h1>
+        <p id="finalStats"></p>
+        <p id="newRecord" class="hidden" style="color:var(--good);font-weight:bold;">🏆 YENİ REKOR! 🏆</p>
+        <button class="btn" onclick="startGame()">TEKRAR OYNA ↻</button>
+    </div>
+
     <script>
-        function found() {
-            const findTime = new Date().getTime() - window.startTime;
-            const findSeconds = findTime / 1000;
-            alert('Found in '+findSeconds+' seconds');
-            newGame();
+    (function(){
+        const field   = document.getElementById('playfield');
+        const hud     = document.getElementById('hud');
+        const timeWrap= document.getElementById('timeBarWrap');
+        const timeBar = document.getElementById('timeBar');
+        const scoreEl = document.getElementById('score');
+        const comboEl = document.getElementById('combo');
+        const levelEl = document.getElementById('level');
+        const bestEl  = document.getElementById('best');
+        const startScreen = document.getElementById('startScreen');
+        const endScreen   = document.getElementById('endScreen');
+
+        const START_TIME = 30;      // saniye
+        const MAX_TIME   = 30;
+        let state = null;
+        let best = parseInt(localStorage.getItem('kanyeBest') || '0', 10);
+        bestEl.textContent = best;
+
+        // --- Basit ses (Web Audio, dosya gerekmez) ---
+        let actx = null;
+        function beep(freq, dur, type){
+            try{
+                actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+                const o = actx.createOscillator(), g = actx.createGain();
+                o.type = type||'square'; o.frequency.value = freq;
+                o.connect(g); g.connect(actx.destination);
+                g.gain.setValueAtTime(.18, actx.currentTime);
+                g.gain.exponentialRampToValueAtTime(.001, actx.currentTime+dur);
+                o.start(); o.stop(actx.currentTime+dur);
+            }catch(e){}
         }
-        function newGame() {
-            window.startTime = new Date().getTime();
-            const maxX = document.body.clientWidth - 45;
-            const maxY = document.body.clientHeight - 50;
-            const x = Math.round(Math.random() * maxX);
-            const y = Math.round(Math.random() * maxY);
-            document.querySelector('img').style.top = y + 'px';
-            document.querySelector('img').style.left = x + 'px';
+
+        function rand(min,max){return Math.random()*(max-min)+min;}
+
+        // --- Cihaza göre zorluk ölçeklemesi ---
+        const isTouch = window.matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+        function fieldDiag(){return Math.hypot(field.clientWidth, field.clientHeight);}
+        // Hız ekran köşegenine göre (px/saniye) -> her cihazda dengeli, telefonda daha hızlı
+        function baseSpeed(){return fieldDiag() * (isTouch ? 0.14 : 0.10);}
+        function startSize(){return isTouch ? 54 : 60;}
+        function minSize(){return isTouch ? 26 : 34;}
+        function startDecoys(){return isTouch ? 2 : 1;}
+        // Oynanabilir alan: üstte HUD, altta süre çubuğu
+        function bounds(){
+            const top = (hud.offsetHeight || 56) + 6;
+            return {w:field.clientWidth, h:field.clientHeight, top:top, bottom:18};
         }
-        newGame();
+
+        function makeKanye(fake){
+            const img = document.createElement('img');
+            img.src = 'head.png';
+            img.className = 'kanye' + (fake?' fake':'');
+            img.draggable = false;
+            field.appendChild(img);
+            const b = bounds();
+            const size = state.size;
+            const ang = rand(0, Math.PI*2);
+            const e = {
+                el:img, fake:!!fake, size:size,
+                x:rand(0, Math.max(0, b.w - size)),
+                y:rand(b.top, Math.max(b.top, b.h - size - b.bottom)),
+                vx:Math.cos(ang)*state.speed, vy:Math.sin(ang)*state.speed
+            };
+            img.style.width = size+'px';
+            img.addEventListener('pointerdown', ev=>{ev.preventDefault(); hit(e);});
+            return e;
+        }
+
+        function popText(x,y,text,color){
+            const p = document.createElement('div');
+            p.className='pop'; p.textContent=text; p.style.color=color;
+            p.style.left=x+'px'; p.style.top=y+'px';
+            field.appendChild(p);
+            setTimeout(()=>p.remove(),800);
+        }
+
+        function hit(e){
+            if(!state.running) return;
+            const cx = e.x + e.size/2, cy = e.y + e.size/2;
+            if(e.fake){
+                state.combo = 0;
+                state.score = Math.max(0, state.score - 5);
+                state.time  = Math.max(0, state.time - 3);
+                beep(110,.25,'sawtooth');
+                popText(cx,cy,'-5  -3sn',getCSS('--bad'));
+                field.classList.remove('shake'); void field.offsetWidth;
+                field.classList.add('shake');
+            }else{
+                state.combo++;
+                const gained = 10 * state.combo;
+                state.score += gained;
+                state.time = Math.min(MAX_TIME, state.time + 1.2);
+                state.found++;
+                beep(660 + state.combo*40,.12,'square');
+                popText(cx,cy,'+'+gained,getCSS('--good'));
+                // hedefi ışınla + hızlandır
+                respawn(e);
+                if(state.found % 5 === 0) levelUp();
+            }
+            sync();
+        }
+
+        function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+
+        function respawn(e){
+            const b = bounds();
+            e.size = state.size;
+            e.el.style.width = e.size+'px';
+            e.x = rand(0, Math.max(0, b.w - e.size));
+            e.y = rand(b.top, Math.max(b.top, b.h - e.size - b.bottom));
+            const ang = rand(0, Math.PI*2);
+            e.vx = Math.cos(ang)*state.speed;
+            e.vy = Math.sin(ang)*state.speed;
+        }
+
+        function levelUp(){
+            state.level++;
+            state.speed *= 1.15;
+            state.size = Math.max(minSize(), state.size - 3);
+            // gerçek hedefi de hızlandır
+            const ang = rand(0,Math.PI*2);
+            state.target.vx = Math.cos(ang)*state.speed;
+            state.target.vy = Math.sin(ang)*state.speed;
+            state.target.size = state.size;
+            state.target.el.style.width = state.size+'px';
+            // yeni sahte ekle
+            state.decoys.push(makeKanye(true));
+            beep(880,.18,'triangle');
+            levelEl.textContent = state.level;
+        }
+
+        function sync(){
+            scoreEl.textContent = state.score;
+            comboEl.textContent = 'x'+state.combo;
+            levelEl.textContent = state.level;
+        }
+
+        function moveEntity(e, dt, b){
+            e.x += e.vx*dt; e.y += e.vy*dt;
+            if(e.x <= 0){e.x=0; e.vx=Math.abs(e.vx);}
+            if(e.x >= b.w-e.size){e.x=b.w-e.size; e.vx=-Math.abs(e.vx);}
+            if(e.y <= b.top){e.y=b.top; e.vy=Math.abs(e.vy);}
+            if(e.y >= b.h-e.size-b.bottom){e.y=b.h-e.size-b.bottom; e.vy=-Math.abs(e.vy);}
+            e.el.style.left = e.x+'px';
+            e.el.style.top  = e.y+'px';
+        }
+
+        let lastTs = 0;
+        function loop(ts){
+            if(!state || !state.running) return;
+            // dt'yi sınırla: sekme arka plandayken sıçramayı önler
+            const dt = lastTs ? Math.min((ts-lastTs)/1000, 0.05) : 0;
+            lastTs = ts;
+            state.time -= dt;
+            if(state.time <= 0){ state.time=0; endGame(); return; }
+            timeBar.style.width = (state.time/MAX_TIME*100)+'%';
+
+            const b = bounds();
+            moveEntity(state.target, dt, b);
+            state.decoys.forEach(d=>moveEntity(d, dt, b));
+            requestAnimationFrame(loop);
+        }
+
+        function startGame(){
+            field.innerHTML='';
+            startScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
+            hud.classList.remove('hidden');
+            timeWrap.classList.remove('hidden');
+            state = {
+                score:0, combo:0, level:1, found:0,
+                time:START_TIME, speed:baseSpeed(), size:startSize(),
+                running:true, target:null, decoys:[]
+            };
+            state.target = makeKanye(false);
+            for(let i=0;i<startDecoys();i++) state.decoys.push(makeKanye(true));
+            sync();
+            timeBar.style.width='100%';
+            lastTs = 0;
+            beep(523,.12,'square');
+            requestAnimationFrame(loop);
+        }
+
+        function endGame(){
+            state.running = false;
+            hud.classList.add('hidden');
+            timeWrap.classList.add('hidden');
+            beep(196,.4,'sawtooth');
+            const isRecord = state.score > best;
+            if(isRecord){ best = state.score; localStorage.setItem('kanyeBest', best); }
+            bestEl.textContent = best;
+            document.getElementById('finalStats').innerHTML =
+                'Skorun: <b>'+state.score+'</b><br>'+
+                'Ulaştığın seviye: <b>'+state.level+'</b> · Rekor: <b>'+best+'</b>';
+            document.getElementById('newRecord').classList.toggle('hidden', !isRecord);
+            endScreen.classList.remove('hidden');
+        }
+
+        // Ekran döndürme / boyut değişiminde hedefleri alan içine sıkıştır
+        function clampAll(){
+            if(!state || !state.running) return;
+            const b = bounds();
+            [state.target].concat(state.decoys).forEach(e=>{
+                e.x = Math.min(Math.max(0, e.x), Math.max(0, b.w - e.size));
+                e.y = Math.min(Math.max(b.top, e.y), Math.max(b.top, b.h - e.size - b.bottom));
+                e.el.style.left = e.x+'px';
+                e.el.style.top  = e.y+'px';
+            });
+        }
+        window.addEventListener('resize', clampAll);
+        window.addEventListener('orientationchange', ()=>setTimeout(clampAll, 300));
+
+        // global'e aç (butonlar onclick kullanıyor)
+        window.startGame = startGame;
+    })();
     </script>
 </body>
 </html>
