@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-    <title>Kanye'yi Bul!</title>
+    <title>FIND KANYE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style type="text/css">
         :root{
             --accent:#ffd33d;
@@ -12,7 +14,7 @@
         }
         *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
         html, body{height:100%;margin:0;padding:0;overflow:hidden;
-            font-family:'Trebuchet MS','Segoe UI',sans-serif;
+            font-family:'Space Mono','Courier New',monospace;
             user-select:none;-webkit-user-select:none;
             touch-action:none;overscroll-behavior:none;}
         #playfield{
@@ -30,6 +32,22 @@
         }
         .kanye.fake{filter:hue-rotate(150deg) saturate(2.5) drop-shadow(0 4px 6px rgba(0,0,0,.5));}
         .kanye:active{transform:scale(.85);}
+        .kanye.golden{filter:drop-shadow(0 0 10px #ffdf3d) drop-shadow(0 0 22px #ff9d00) saturate(1.6) brightness(1.15);
+            animation:goldPulse .55s ease-in-out infinite alternate;}
+        @keyframes goldPulse{from{transform:scale(1);}to{transform:scale(1.14);}}
+
+        /* Parçacık patlaması */
+        .particle{position:absolute;border-radius:50%;pointer-events:none;z-index:8;
+            will-change:transform,opacity;}
+
+        /* Combo parlaması */
+        #comboGlow{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;
+            box-shadow:inset 0 0 90px rgba(77,255,136,.55);transition:opacity .25s;}
+        #comboGlow.show{opacity:1;}
+
+        /* Vignette derinlik */
+        #vignette{position:fixed;inset:0;pointer-events:none;z-index:3;
+            background:radial-gradient(ellipse at center,transparent 58%,rgba(0,0,0,.5) 100%);}
 
         /* HUD */
         #hud{position:fixed;top:0;left:0;right:0;display:flex;gap:8px;
@@ -37,13 +55,14 @@
             padding:calc(8px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right))
                     8px calc(10px + env(safe-area-inset-left));
             pointer-events:none;z-index:10;flex-wrap:nowrap;}
-        .panel{background:rgba(20,20,20,.78);color:#fff;border-radius:12px;
-            padding:6px 10px;font-weight:bold;backdrop-filter:blur(3px);flex:1 1 0;
-            min-width:0;box-shadow:0 4px 14px rgba(0,0,0,.4);text-align:center;line-height:1.15;}
-        .panel small{display:block;font-size:clamp(9px,2.4vw,11px);opacity:.7;font-weight:normal;
-            text-transform:uppercase;letter-spacing:1px;}
-        .panel b{font-size:clamp(16px,5vw,22px);color:var(--accent);}
-        #comboPanel b{color:var(--good);}
+        .panel{background:rgba(255,255,255,.94);color:#000;border-radius:0;
+            padding:6px 10px;font-weight:400;backdrop-filter:blur(4px);flex:1 1 0;
+            min-width:0;box-shadow:none;text-align:center;line-height:1.15;
+            border:1px solid rgba(0,0,0,.18);}
+        .panel small{display:block;font-size:clamp(8px,2vw,10px);font-weight:400;
+            text-transform:uppercase;letter-spacing:0.18em;color:#555;}
+        .panel b{font-size:clamp(15px,4.5vw,20px);color:#000;font-weight:400;}
+        #comboPanel b{color:#000;}
 
         /* Süre çubuğu */
         #timeBarWrap{position:fixed;left:0;right:0;bottom:0;
@@ -55,26 +74,45 @@
             transition:width .1s linear;}
 
         /* Skor baloncukları */
-        .pop{position:absolute;z-index:9;font-weight:bold;font-size:24px;
-            pointer-events:none;text-shadow:0 2px 4px #000;
+        .pop{position:absolute;z-index:9;font-family:'Space Mono','Courier New',monospace;
+            font-weight:700;font-size:clamp(16px,4vw,22px);letter-spacing:0.05em;
+            pointer-events:none;text-shadow:0 2px 6px rgba(0,0,0,.8);
             animation:floatUp .8s ease-out forwards;}
         @keyframes floatUp{
             0%{opacity:1;transform:translateY(0) scale(1);}
             100%{opacity:0;transform:translateY(-60px) scale(1.4);}
         }
 
-        /* Ekranlar */
+        /* Ekranlar — Yeezy aesthetic */
         .overlay{position:fixed;inset:0;z-index:20;display:flex;
             flex-direction:column;align-items:center;justify-content:center;
-            background:rgba(0,0,0,.7);color:#fff;text-align:center;padding:20px;}
-        .overlay h1{font-size:clamp(34px,8vw,72px);margin:0 0 6px;
-            color:var(--accent);text-shadow:0 4px 10px #000;}
-        .overlay p{font-size:clamp(15px,3.5vw,20px);max-width:520px;
-            line-height:1.5;margin:6px 0;}
-        .btn{margin-top:22px;padding:16px 42px;font-size:22px;font-weight:bold;
-            border:none;border-radius:50px;cursor:pointer;color:#1a1a1a;
-            background:var(--accent);box-shadow:0 6px 0 #b8941f;transition:.08s;}
-        .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #b8941f;}
+            background:#fff;color:#000;text-align:center;
+            padding:clamp(20px,5vw,60px);}
+        .overlay h1{
+            font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(22px,5.5vw,52px);
+            font-weight:400;
+            letter-spacing:0.22em;
+            text-transform:uppercase;
+            color:#000;
+            margin:0 0 28px;
+            line-height:1.1;}
+        .overlay p{
+            font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(10px,2.2vw,13px);
+            max-width:480px;line-height:1.9;margin:4px 0;
+            text-transform:uppercase;letter-spacing:0.1em;color:#333;}
+        .btn{
+            margin-top:36px;
+            padding:14px 48px;
+            font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(11px,2.8vw,14px);
+            font-weight:400;letter-spacing:0.25em;text-transform:uppercase;
+            border:2px solid #000;border-radius:0;
+            cursor:pointer;color:#fff;background:#000;
+            box-shadow:none;transition:background .1s,color .1s;}
+        .btn:hover{background:#fff;color:#000;}
+        .btn:active{opacity:.75;}
         .hidden{display:none;}
         .shake{animation:shake .3s;}
         @keyframes shake{
@@ -91,33 +129,38 @@
             60%{transform:translate(-3px,-4px);}
             80%{transform:translate(4px,2px);}
         }
-        #finalStats b{color:var(--accent);}
+        #finalStats b{color:#000;font-weight:400;}
 
         /* Instagram badge */
-        #igBadge{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));
-            right:calc(18px + env(safe-area-inset-right));
-            z-index:25;display:flex;align-items:center;gap:8px;
-            background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);
-            color:#fff;font-weight:bold;font-size:clamp(13px,3.5vw,16px);
-            padding:10px 16px;border-radius:50px;
-            box-shadow:0 4px 18px rgba(0,0,0,.45);
-            text-decoration:none;letter-spacing:.3px;
-            transition:transform .12s,box-shadow .12s;cursor:pointer;}
-        #igBadge:active{transform:scale(.94);box-shadow:0 2px 8px rgba(0,0,0,.45);}
-        #igBadge svg{flex-shrink:0;}
+        #igBadge{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom));
+            right:calc(24px + env(safe-area-inset-right));
+            z-index:25;display:flex;align-items:center;gap:10px;
+            background:#000;color:#fff;
+            font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(10px,2.5vw,12px);font-weight:400;
+            letter-spacing:0.18em;text-transform:uppercase;
+            padding:11px 20px;border-radius:0;border:2px solid #000;
+            box-shadow:none;text-decoration:none;
+            transition:background .1s,color .1s;cursor:pointer;}
+        #igBadge:hover{background:#fff;color:#000;}
+        #igBadge:hover svg{stroke:#000;}
+        #igBadge:active{opacity:.7;}
+        #igBadge svg{flex-shrink:0;transition:stroke .1s;}
 
         /* Countdown intro overlay */
         #introScreen{position:fixed;inset:0;z-index:40;display:flex;
             flex-direction:column;align-items:center;justify-content:center;
-            background:rgba(0,0,0,.88);color:#fff;pointer-events:none;}
+            background:#000;color:#fff;pointer-events:none;}
         #introScreen.hidden{display:none;}
-        #introTitle{font-size:clamp(38px,10vw,80px);font-weight:900;
-            color:var(--accent);text-shadow:0 0 40px #ffd33d;
-            letter-spacing:2px;margin-bottom:30px;
-            animation:introPulse 1s ease-in-out infinite alternate;}
-        @keyframes introPulse{from{transform:scale(1);}to{transform:scale(1.06);}}
-        #introCount{font-size:clamp(72px,22vw,180px);font-weight:900;
-            text-shadow:0 0 60px #fff,0 0 120px #ffd33d;
+        #introTitle{
+            font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(14px,3.5vw,22px);font-weight:400;
+            color:#fff;letter-spacing:0.35em;text-transform:uppercase;
+            margin-bottom:40px;opacity:.7;}
+        #introCount{
+            font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(80px,24vw,200px);font-weight:400;
+            color:#fff;letter-spacing:-0.02em;
             line-height:1;min-height:1.1em;text-align:center;}
 
         /* Carnival mode */
@@ -132,15 +175,19 @@
             100%{box-shadow:inset 0 0 40px rgba(255,60,0,.35);}
         }
         #modeLabel,#parisLabel{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);
-            z-index:30;font-size:clamp(36px,10vw,72px);font-weight:900;text-align:center;
+            z-index:30;font-family:'Space Mono','Courier New',monospace;
+            font-size:clamp(22px,6vw,52px);font-weight:400;text-align:center;
+            letter-spacing:0.2em;text-transform:uppercase;
             color:#fff;text-shadow:0 0 30px #ff6a00,0 0 60px #ff6a00;
             pointer-events:none;transition:transform .15s;}
-        #parisLabel{text-shadow:0 0 30px #2d9bff,0 0 60px #2d9bff;letter-spacing:2px;}
+        #parisLabel{text-shadow:0 0 30px #2d9bff,0 0 60px #2d9bff;}
         #modeLabel.show,#parisLabel.show{transform:translate(-50%,-50%) scale(1);}
     </style>
 </head>
 <body>
     <div id="playfield"></div>
+    <div id="vignette"></div>
+    <div id="comboGlow"></div>
     <div id="modeLabel">🎪 CARNIVAL MODE</div>
     <div id="parisLabel">🗼 WHO IS IN PARIS</div>
 
@@ -153,24 +200,24 @@
     <div id="timeBarWrap" class="hidden"><div id="timeBar"></div></div>
 
     <audio id="bgMusic"       src="YE - FATHER (feat. TRAVIS SCOTT).mp3" preload="auto"></audio>
-    <audio id="carnivalMusic" src="$, Ye, Ty Dolla $ign - CARNIVAL ft. Playboi Carti &amp; Rich Da Kid.mp3" preload="auto"></audio>
+    <audio id="carnivalMusic" src="carnival.mp3" preload="auto"></audio>
     <audio id="parisMusic"    src="Video Project 9.m4a" preload="auto"></audio>
 
     <!-- Start screen -->
     <div id="startScreen" class="overlay">
-        <h1>🕶️ Find Kanye</h1>
-        <p>Click the real <b>Kanye</b> hiding in the beans as fast as you can.
-           Build combos for bigger points!</p>
-        <p>⚠️ Watch out: clicking <b style="color:var(--bad)">green fake Kanyes</b> costs you points and time.</p>
-        <button class="btn" onclick="startGame()">PLAY ▶</button>
+        <h1>FIND KANYE</h1>
+        <p>CLICK THE REAL KANYE HIDING IN THE BEANS.</p>
+        <p>BUILD COMBOS FOR BIGGER POINTS.</p>
+        <p style="color:#999;margin-top:8px;">AVOID THE FAKE ONES — THEY COST YOU.</p>
+        <button class="btn" onclick="startGame()">PLAY</button>
     </div>
 
     <!-- End screen -->
     <div id="endScreen" class="overlay hidden">
-        <h1>Time's Up!</h1>
+        <h1>TIME'S UP.</h1>
         <p id="finalStats"></p>
-        <p id="newRecord" class="hidden" style="color:var(--good);font-weight:bold;">🏆 NEW RECORD! 🏆</p>
-        <button class="btn" onclick="startGame()">PLAY AGAIN ↻</button>
+        <p id="newRecord" class="hidden" style="color:#000;font-weight:700;letter-spacing:0.2em;">NEW RECORD</p>
+        <button class="btn" onclick="startGame()">PLAY AGAIN</button>
     </div>
 
     <!-- Instagram badge (end screen köşesi) -->
@@ -204,6 +251,7 @@
         const igBadge     = document.getElementById('igBadge');
         const introScreen = document.getElementById('introScreen');
         const introCount  = document.getElementById('introCount');
+        const comboGlow   = document.getElementById('comboGlow');
         const bgMusic      = document.getElementById('bgMusic');
         const carnivalMusic= document.getElementById('carnivalMusic');
         const parisMusic   = document.getElementById('parisMusic');
@@ -340,13 +388,19 @@
         // Countdown sonrası oyunu gerçekten başlat
         function runCountdown(cb){
             introScreen.classList.remove('hidden');
-            const steps=['3','2','1','GO!'];
-            let i=0;
+            let count = 20;
             function tick(){
-                introCount.textContent=steps[i];
-                i++;
-                if(i<steps.length) setTimeout(tick,1000);
-                else setTimeout(()=>{ introScreen.classList.add('hidden'); cb(); },800);
+                if(count > 0){
+                    introCount.textContent = count;
+                    count--;
+                    setTimeout(tick, 1000);
+                } else {
+                    introCount.textContent = "GO!";
+                    setTimeout(()=>{
+                        introScreen.classList.add('hidden');
+                        cb();
+                    }, 800);
+                }
             }
             tick();
         }
@@ -447,7 +501,7 @@
             const size = state.size;
             const ang = rand(0, Math.PI*2);
             const e = {
-                el:img, fake:!!fake, size:size,
+                el:img, fake:!!fake, size:size, golden:false,
                 x:rand(0, Math.max(0, b.w - size)),
                 y:rand(b.top, Math.max(b.top, b.h - size - b.bottom)),
                 vx:Math.cos(ang)*state.speed, vy:Math.sin(ang)*state.speed
@@ -463,6 +517,36 @@
             p.style.left=x+'px'; p.style.top=y+'px';
             field.appendChild(p);
             setTimeout(()=>p.remove(),800);
+        }
+
+        // Parçacık patlaması (vuruşta)
+        function spawnParticles(x,y,colors,count,big){
+            for(let i=0;i<count;i++){
+                const p=document.createElement('div');
+                p.className='particle';
+                const sz=(big?8:5)+Math.random()*(big?8:5);
+                p.style.width=sz+'px'; p.style.height=sz+'px';
+                p.style.left=x+'px'; p.style.top=y+'px';
+                p.style.background=colors[Math.floor(Math.random()*colors.length)];
+                p.style.boxShadow='0 0 6px '+p.style.background;
+                field.appendChild(p);
+                const ang=Math.random()*Math.PI*2;
+                const dist=(big?70:45)+Math.random()*(big?90:55);
+                const dx=Math.cos(ang)*dist, dy=Math.sin(ang)*dist;
+                p.animate([
+                    {transform:'translate(0,0) scale(1)',opacity:1},
+                    {transform:'translate('+dx+'px,'+dy+'px) scale(0)',opacity:0}
+                ],{duration:550+Math.random()*250,easing:'cubic-bezier(.2,.7,.3,1)'});
+                setTimeout(()=>p.remove(),820);
+            }
+        }
+
+        // Yüksek combo'da ekran parlaması
+        let comboGlowT=null;
+        function flashComboGlow(){
+            comboGlow.classList.add('show');
+            if(comboGlowT) clearTimeout(comboGlowT);
+            comboGlowT=setTimeout(()=>comboGlow.classList.remove('show'),220);
         }
 
         function switchToCarnival(){
@@ -502,13 +586,23 @@
                 field.classList.remove('shake'); void field.offsetWidth;
                 field.classList.add('shake');
             }else{
+                const golden = e.golden;
                 state.combo++;
-                const gained = 10 * state.combo;
+                let gained = 10 * state.combo;
+                let addTime = 1.2;
+                if(golden){ gained *= 3; addTime = 2.5; }
                 state.score += gained;
-                state.time = Math.min(MAX_TIME, state.time + 1.2);
+                state.time = Math.min(MAX_TIME, state.time + addTime);
                 state.found++;
                 synthHit(state.combo);
-                popText(cx,cy,'+'+gained,getCSS('--good'));
+                if(golden){
+                    popText(cx,cy,'+'+gained+' ★',getCSS('--accent'));
+                    spawnParticles(cx,cy,['#ffdf3d','#ff9d00','#fff3b0'],22,true);
+                }else{
+                    popText(cx,cy,'+'+gained,getCSS('--good'));
+                    spawnParticles(cx,cy,['#4dff88','#ffd33d','#ffffff'],12,false);
+                }
+                if(state.combo>=5) flashComboGlow();
                 respawn(e);
                 if(state.found % 5 === 0) levelUp();
                 // Carnival eşiği geçildi mi?
@@ -519,6 +613,10 @@
 
         function getCSS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 
+        function setGolden(e,on){
+            e.golden = on;
+            e.el.classList.toggle('golden', on);
+        }
         function respawn(e){
             const b = bounds();
             e.size = state.size;
@@ -528,6 +626,8 @@
             const ang = rand(0, Math.PI*2);
             e.vx = Math.cos(ang)*state.speed;
             e.vy = Math.sin(ang)*state.speed;
+            // Gerçek hedef ara sıra altın olur (3x puan + bonus süre)
+            if(!e.fake) setGolden(e, Math.random() < 0.14);
         }
 
         function levelUp(){
@@ -618,8 +718,9 @@
             if(isRecord){ best = state.score; localStorage.setItem('kanyeBest', best); }
             bestEl.textContent = best;
             document.getElementById('finalStats').innerHTML =
-                'Score: <b>'+state.score+'</b><br>'+
-                'Level reached: <b>'+state.level+'</b> · Best: <b>'+best+'</b>';
+                'SCORE &nbsp;<b>'+state.score+'</b><br>'+
+                'LEVEL &nbsp;<b>'+state.level+'</b><br>'+
+                'BEST &nbsp;&nbsp;<b>'+best+'</b>';
             document.getElementById('newRecord').classList.toggle('hidden', !isRecord);
             endScreen.classList.remove('hidden');
         }
