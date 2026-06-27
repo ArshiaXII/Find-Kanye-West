@@ -311,17 +311,39 @@
             }catch(e){}
         }
 
-        // HIT sesi — Father: warm C-maj chord | Carnival: trap synth stab (Fm arpejio)
+        // HIT sesi — Kanye imzası: 808 bas + chipmunk chop
         function synthHit(combo){
             const carnival = state && state.carnivalMode;
+            const ctx = getCtx();
+            const t = ctx.currentTime;
+
+            // ── 808 SUB BASS (Kanye imzası) ──
+            const bass = ctx.createOscillator();
+            const bassGain = ctx.createGain();
+            bass.type = 'sine';
+            bass.frequency.setValueAtTime(80, t);
+            bass.frequency.exponentialRampToValueAtTime(35, t + 0.45); // pitch düşüşü
+            bassGain.gain.setValueAtTime(0.55, t);
+            bassGain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+            bass.connect(bassGain); bassGain.connect(ctx.destination);
+            bass.start(t); bass.stop(t + 0.5);
+
+            // ── CHiPMUNK SOUL CHOP (kısa yüksek pitched nota) ──
+            const chop = ctx.createOscillator();
+            const chopGain = ctx.createGain();
+            chop.type = 'triangle';
+            const baseFreq = carnival ? 880 : 660;
+            const pitch = baseFreq * Math.min(1 + (combo - 1) * 0.06, 2.2);
+            chop.frequency.setValueAtTime(pitch * 1.04, t);
+            chop.frequency.exponentialRampToValueAtTime(pitch, t + 0.06);
+            chopGain.gain.setValueAtTime(0.28, t);
+            chopGain.gain.exponentialRampToValueAtTime(0.001, t + 0.13);
+            chop.connect(chopGain); chopGain.connect(ctx.destination);
+            chop.start(t); chop.stop(t + 0.15);
+
             if(carnival){
-                // Carnival: keskin sawtooth stab, Fm arpejio (F-Ab-C), hızlı
-                [349, 415, 523].forEach((f,i) => osc(f * Math.min(1 + combo*0.04, 2), 'sawtooth', 0.18, 0.10, i*0.025));
-                // Alt sub bass vuruşu
-                osc(55, 'sine', 0.25, 0.15);
-            } else {
-                // Father: yumuşak C-maj chord (C-E-G), sine wave
-                [261, 329, 392].forEach((f,i) => osc(f, 'sine', 0.14, 0.22, i*0.04));
+                // Carnival: ekstra sawtooth stab
+                [349, 523].forEach((f,i) => osc(f * Math.min(1 + combo*0.04, 2), 'sawtooth', 0.12, 0.09, i*0.02));
             }
         }
 
@@ -388,19 +410,13 @@
         // Countdown sonrası oyunu gerçekten başlat
         function runCountdown(cb){
             introScreen.classList.remove('hidden');
-            let count = 20;
+            const steps = ['3','2','1','GO!'];
+            let i = 0;
             function tick(){
-                if(count > 0){
-                    introCount.textContent = count;
-                    count--;
-                    setTimeout(tick, 1000);
-                } else {
-                    introCount.textContent = "GO!";
-                    setTimeout(()=>{
-                        introScreen.classList.add('hidden');
-                        cb();
-                    }, 800);
-                }
+                introCount.textContent = steps[i];
+                i++;
+                if(i < steps.length) setTimeout(tick, 1000);
+                else setTimeout(()=>{ introScreen.classList.add('hidden'); cb(); }, 700);
             }
             tick();
         }
